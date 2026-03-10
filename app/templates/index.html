@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Voiceover Generator</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="left">
+        <h1>Generate AI Voiceover for Product Walkthroughs</h1>
+        <p>Upload an MP4 (30 seconds to 3 minutes), detect hotspots, and create engaging narration.</p>
+        <form action="/generate" method="post" enctype="multipart/form-data" class="panel">
+          <label>Upload MP4</label>
+          <input type="file" name="video" accept="video/mp4" required />
+
+          <label>Call to action text</label>
+          <input type="text" name="cta_text" value="Start your free trial now" required />
+
+          <label>Call to action URL</label>
+          <input type="url" name="cta_url" value="https://training.skillstudio.ai/signup" required />
+
+          <button type="submit">Analyze & Generate Commentary</button>
+        </form>
+
+        <section class="panel">
+          <h2>Lead Capture Form</h2>
+          <form id="lead-form" class="lead-form">
+            <input type="email" name="email" placeholder="Email*" required />
+            <input type="text" name="name" placeholder="Name*" required />
+            <input type="text" name="company" placeholder="Company" />
+            <select name="company_size">
+              <option value="">Company Size</option>
+              <option>1-10</option>
+              <option>11-50</option>
+              <option>51-200</option>
+              <option>201+</option>
+            </select>
+            <button type="submit">Get Started</button>
+          </form>
+          <p id="lead-status"></p>
+        </section>
+      </section>
+
+      <section class="right panel">
+        <h2>Generated Output</h2>
+        {% if result %}
+        <p><strong>Project ID:</strong> {{ result.project_id }}</p>
+        <p><strong>Duration:</strong> {{ "%.1f"|format(result.duration_seconds) }}s</p>
+        <h3>Detected Hotspots</h3>
+        <ul>
+          {% for hotspot in result.hotspots %}
+          <li>
+            <strong>{{ hotspot.timestamp }}s</strong> — {{ hotspot.screen }}: {{ hotspot.hotspot }}
+          </li>
+          {% endfor %}
+        </ul>
+        <h3>Narration Script</h3>
+        <pre>{{ result.script }}</pre>
+        {% else %}
+        <p>No project generated yet. Upload a video to get started.</p>
+        {% endif %}
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

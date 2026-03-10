@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+app/uploads/*.mp4
+app/generated/*.json
+app/generated/*.jsonl
