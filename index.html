@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Storyteller Voiceovers</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem auto;
+        max-width: 860px;
+        padding: 0 1rem 2rem;
+        line-height: 1.45;
+      }
+      h1 {
+        margin-bottom: 0.4rem;
+      }
+      .row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      textarea {
+        min-height: 110px;
+        width: 100%;
+        padding: 0.6rem;
+      }
+      button {
+        width: fit-content;
+        padding: 0.6rem 0.9rem;
+        cursor: pointer;
+      }
+      .box {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+        background: #fafafa;
+      }
+      .muted {
+        color: #666;
+      }
+      #error {
+        color: #b00020;
+      }
+      pre {
+        white-space: pre-wrap;
+      }
+      video {
+        width: 100%;
+        border-radius: 8px;
+        margin-top: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Storyteller Voiceovers</h1>
+    <p class="muted">
+      Upload a short video, generate a narration script with vision, then merge speech back into the clip.
+    </p>
+
+    <form id="generator-form">
+      <div class="row">
+        <label for="video">Video file</label>
+        <input id="video" name="video" type="file" accept="video/*" required />
+      </div>
+
+      <div class="row">
+        <label for="prompt">Voiceover prompt</label>
+        <textarea id="prompt" name="prompt">
+Create a concise and engaging voiceover script for this clip. Describe what is happening and keep the tone natural.</textarea
+        >
+      </div>
+
+      <button id="submit-button" type="submit">Generate voiceover</button>
+      <span id="status" class="muted"></span>
+      <p id="error"></p>
+    </form>
+
+    <div id="result" class="box" hidden>
+      <h2>Generated script</h2>
+      <pre id="script"></pre>
+
+      <h2>Final video</h2>
+      <video id="output-video" controls></video>
+      <p><a id="download-link" download="voiceover_video.mp4">Download final video</a></p>
+    </div>
+
+    <script>
+      const form = document.getElementById("generator-form");
+      const submitButton = document.getElementById("submit-button");
+      const statusEl = document.getElementById("status");
+      const errorEl = document.getElementById("error");
+      const resultEl = document.getElementById("result");
+      const scriptEl = document.getElementById("script");
+      const videoEl = document.getElementById("output-video");
+      const downloadLink = document.getElementById("download-link");
+
+      let previousObjectUrl = null;
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        errorEl.textContent = "";
+        resultEl.hidden = true;
+
+        const formData = new FormData(form);
+        submitButton.disabled = true;
+        statusEl.textContent = " Processing... this may take a while for larger clips.";
+
+        try {
+          const response = await fetch("/api/generate", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            let message = "Failed to generate voiceover.";
+            try {
+              const data = await response.json();
+              if (data.error) {
+                message = data.error;
+              }
+            } catch (_ignored) {}
+            throw new Error(message);
+          }
+
+          const scriptHeader = response.headers.get("X-Voiceover-Script");
+          const scriptText = scriptHeader ? decodeURIComponent(scriptHeader) : "(No script available)";
+          const blob = await response.blob();
+
+          if (previousObjectUrl) {
+            URL.revokeObjectURL(previousObjectUrl);
+          }
+          previousObjectUrl = URL.createObjectURL(blob);
+
+          scriptEl.textContent = scriptText;
+          videoEl.src = previousObjectUrl;
+          downloadLink.href = previousObjectUrl;
+          resultEl.hidden = false;
+          statusEl.textContent = " Done.";
+        } catch (error) {
+          statusEl.textContent = "";
+          errorEl.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
