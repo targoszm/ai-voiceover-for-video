@@ -31,6 +31,10 @@
         padding: 0.6rem 0.9rem;
         cursor: pointer;
       }
+      select {
+        width: fit-content;
+        padding: 0.45rem;
+      }
       .box {
         border: 1px solid #ddd;
         border-radius: 8px;
@@ -52,18 +56,33 @@
         border-radius: 8px;
         margin-top: 0.75rem;
       }
+      audio {
+        width: 100%;
+        margin-top: 0.75rem;
+      }
+      #notice {
+        color: #8a5a00;
+      }
     </style>
   </head>
   <body>
     <h1>AI Storyteller Voiceovers</h1>
     <p class="muted">
-      Upload a short video, generate a narration script with vision, then merge speech back into the clip.
+      Upload a short video, generate a narration script with vision, then return audio or (for short clips) a merged video.
     </p>
 
     <form id="generator-form">
       <div class="row">
         <label for="video">Video file</label>
         <input id="video" name="video" type="file" accept="video/*" required />
+      </div>
+
+      <div class="row">
+        <label for="mode">Output mode</label>
+        <select id="mode" name="mode">
+          <option value="audio_only" selected>Audio only (recommended on Vercel)</option>
+          <option value="merge_video">Merge narration into video (short clips only)</option>
+        </select>
       </div>
 
       <div class="row">
@@ -76,15 +95,17 @@ Create a concise and engaging voiceover script for this clip. Describe what is h
       <button id="submit-button" type="submit">Generate voiceover</button>
       <span id="status" class="muted"></span>
       <p id="error"></p>
+      <p id="notice"></p>
     </form>
 
     <div id="result" class="box" hidden>
       <h2>Generated script</h2>
       <pre id="script"></pre>
 
-      <h2>Final video</h2>
+      <h2>Generated media</h2>
       <video id="output-video" controls></video>
-      <p><a id="download-link" download="voiceover_video.mp4">Download final video</a></p>
+      <audio id="output-audio" controls></audio>
+      <p><a id="download-link">Download file</a></p>
     </div>
 
     <script>
@@ -92,9 +113,11 @@ Create a concise and engaging voiceover script for this clip. Describe what is h
       const submitButton = document.getElementById("submit-button");
       const statusEl = document.getElementById("status");
       const errorEl = document.getElementById("error");
+      const noticeEl = document.getElementById("notice");
       const resultEl = document.getElementById("result");
       const scriptEl = document.getElementById("script");
       const videoEl = document.getElementById("output-video");
+      const audioEl = document.getElementById("output-audio");
       const downloadLink = document.getElementById("download-link");
 
       let previousObjectUrl = null;
@@ -102,7 +125,10 @@ Create a concise and engaging voiceover script for this clip. Describe what is h
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         errorEl.textContent = "";
+        noticeEl.textContent = "";
         resultEl.hidden = true;
+        videoEl.hidden = true;
+        audioEl.hidden = true;
 
         const formData = new FormData(form);
         submitButton.disabled = true;
@@ -126,6 +152,8 @@ Create a concise and engaging voiceover script for this clip. Describe what is h
           }
 
           const scriptHeader = response.headers.get("X-Voiceover-Script");
+          const outputType = response.headers.get("X-Output-Type") || "audio";
+          const serverlessNotice = response.headers.get("X-Serverless-Notice");
           const scriptText = scriptHeader ? decodeURIComponent(scriptHeader) : "(No script available)";
           const blob = await response.blob();
 
@@ -135,8 +163,23 @@ Create a concise and engaging voiceover script for this clip. Describe what is h
           previousObjectUrl = URL.createObjectURL(blob);
 
           scriptEl.textContent = scriptText;
-          videoEl.src = previousObjectUrl;
+          if (outputType === "video") {
+            videoEl.src = previousObjectUrl;
+            videoEl.hidden = false;
+            audioEl.hidden = true;
+            downloadLink.download = "voiceover_video.mp4";
+            downloadLink.textContent = "Download final video";
+          } else {
+            audioEl.src = previousObjectUrl;
+            audioEl.hidden = false;
+            videoEl.hidden = true;
+            downloadLink.download = "voiceover.mp3";
+            downloadLink.textContent = "Download generated audio";
+          }
           downloadLink.href = previousObjectUrl;
+          if (serverlessNotice) {
+            noticeEl.textContent = decodeURIComponent(serverlessNotice);
+          }
           resultEl.hidden = false;
           statusEl.textContent = " Done.";
         } catch (error) {

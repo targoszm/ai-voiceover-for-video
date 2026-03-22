@@ -1,10 +1,15 @@
 {
   "functions": {
     "api/generate.py": {
-      "runtime": "python3.12"
+      "runtime": "python3.12",
+      "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/api/health",
+      "dest": "/api/generate.py"
+    },
     {
       "src": "/api/generate",
       "dest": "/api/generate.py"
